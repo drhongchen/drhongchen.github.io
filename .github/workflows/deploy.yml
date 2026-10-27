@@ -1,0 +1,44 @@
+# Copy of the ONLY file in the public repo drhongchen/drhongchen.github.io
+# (as .github/workflows/deploy.yml). It checks out the private source repo, builds it, and publishes
+# the result to GitHub Pages. Kept here so the setup can be recreated.
+#
+# Needs one secret in the public repo: SOURCE_DEPLOY_KEY, the private half of an SSH key whose
+# public half is a read-only deploy key on winclab/website.
+name: Build and deploy site
+
+on:
+  repository_dispatch:
+    types: [deploy]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the private source
+        uses: actions/checkout@v7
+        with:
+          repository: winclab/website
+          ssh-key: ${{ secrets.SOURCE_DEPLOY_KEY }}
+      - name: Install, build, and upload site
+        uses: withastro/action@v6
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
